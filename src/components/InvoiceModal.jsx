@@ -2,6 +2,7 @@ import React, { Fragment } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { toPng } from 'html-to-image';
 import { jsPDF } from 'jspdf';
+import { Download, Printer, Plus, X } from 'lucide-react';
 
 const InvoiceModal = ({
   isOpen,
@@ -9,6 +10,10 @@ const InvoiceModal = ({
   invoiceInfo,
   items,
   onAddNextInvoice,
+  currency,
+  theme,
+  translations,
+  settings
 }) => {
   function closeModal() {
     setIsOpen(false);
@@ -17,6 +22,28 @@ const InvoiceModal = ({
   const addNextInvoiceHandler = () => {
     setIsOpen(false);
     onAddNextInvoice();
+  };
+
+  const formatCurrency = (amount) => {
+    return `${currency.symbol}${amount.toFixed(2)}`;
+  };
+
+  const formatDate = () => {
+    const date = new Date();
+    if (settings.language === 'ar') {
+      return date.toLocaleDateString('ar-EG');
+    } else if (settings.language === 'zh') {
+      return date.toLocaleDateString('zh-CN');
+    } else if (settings.language === 'fr') {
+      return date.toLocaleDateString('fr-FR');
+    } else if (settings.language === 'es') {
+      return date.toLocaleDateString('es-ES');
+    }
+    return date.toLocaleDateString('en-GB', {
+      month: 'numeric',
+      day: 'numeric',
+      year: 'numeric',
+    });
   };
 
   const SaveAsPDFHandler = () => {
@@ -81,11 +108,15 @@ const InvoiceModal = ({
       });
   };
 
+  const printHandler = () => {
+    window.print();
+  };
+
   return (
     <Transition appear show={isOpen} as={Fragment}>
       <Dialog
         as="div"
-        className="fixed inset-0 z-10 overflow-y-auto"
+        className="fixed inset-0 z-50 overflow-y-auto"
         onClose={closeModal}
       >
         <div className="min-h-screen px-4 text-center">
@@ -101,13 +132,10 @@ const InvoiceModal = ({
             <Dialog.Overlay className="fixed inset-0 bg-black/50" />
           </Transition.Child>
 
-          {/* This element is to trick the browser into centering the modal contents. */}
-          <span
-            className="inline-block h-screen align-middle"
-            aria-hidden="true"
-          >
+          <span className="inline-block h-screen align-middle" aria-hidden="true">
             &#8203;
           </span>
+          
           <Transition.Child
             as={Fragment}
             enter="ease-out duration-300"
@@ -117,113 +145,131 @@ const InvoiceModal = ({
             leaveFrom="opacity-100 scale-100"
             leaveTo="opacity-0 scale-95"
           >
-            <div className="my-8 inline-block w-full max-w-md transform overflow-hidden rounded-lg bg-white text-left align-middle shadow-xl transition-all">
-              <div className="p-4" id="print">
-                <h1 className="text-center text-lg font-bold text-gray-900">
-                  INVOICE
-                </h1>
-                <div className="mt-6">
-                  <div className="mb-4 grid grid-cols-2">
-                    <span className="font-bold">Invoice Number:</span>
-                    <span>{invoiceInfo.invoiceNumber}</span>
-                    <span className="font-bold">Cashier:</span>
-                    <span>{invoiceInfo.cashierName}</span>
-                    <span className="font-bold">Customer:</span>
-                    <span>{invoiceInfo.customerName}</span>
-                  </div>
+            <div className={`my-8 inline-block w-full max-w-2xl transform overflow-hidden rounded-lg ${theme.colors.background} text-left align-middle shadow-xl transition-all`}>
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                <h3 className={`text-lg font-medium ${theme.colors.text}`}>
+                  {translations.invoice} #{invoiceInfo.invoiceNumber}
+                </h3>
+                <button
+                  onClick={closeModal}
+                  className="p-2 hover:bg-gray-100 rounded-lg"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
 
+              {/* Invoice Content */}
+              <div className="p-6" id="print">
+                <div className="text-center mb-6">
+                  <h1 className={`text-2xl font-bold ${theme.colors.text}`}>
+                    {settings.shopName || translations.invoice.toUpperCase()}
+                  </h1>
+                  {settings.shopAddress && (
+                    <p className={`text-sm ${theme.colors.textSecondary} mt-1`}>
+                      {settings.shopAddress}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className={`font-medium ${theme.colors.textSecondary}`}>{translations.invoiceNumber}:</span>
+                        <span className={theme.colors.text}>{invoiceInfo.invoiceNumber}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={`font-medium ${theme.colors.textSecondary}`}>{translations.currentDate}:</span>
+                        <span className={theme.colors.text}>{formatDate()}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <span className={`font-medium ${theme.colors.textSecondary}`}>{translations.cashierName}:</span>
+                        <span className={theme.colors.text}>{invoiceInfo.cashierName}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className={`font-medium ${theme.colors.textSecondary}`}>{translations.customerName}:</span>
+                        <span className={theme.colors.text}>{invoiceInfo.customerName}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto mb-6">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="border-y border-black/10 text-sm md:text-base">
-                        <th>ITEM</th>
-                        <th className="text-center">QTY</th>
-                        <th className="text-right">PRICE</th>
-                        <th className="text-right">AMOUNT</th>
+                      <tr className={`border-y ${theme.colors.border} text-sm font-medium ${theme.colors.textSecondary}`}>
+                        <th className="py-3">{translations.itemName}</th>
+                        <th className="py-3 text-center">{translations.quantity}</th>
+                        <th className="py-3 text-right">{translations.price}</th>
+                        <th className="py-3 text-right">Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {items.map((item) => (
-                        <tr key={item.id}>
-                          <td className="w-full">{item.name}</td>
-                          <td className="min-w-[50px] text-center">
-                            {item.qty}
+                      {items.filter(item => item.name.trim().length > 0).map((item) => (
+                        <tr key={item.id} className={`border-b ${theme.colors.border}`}>
+                          <td className={`py-3 ${theme.colors.text}`}>{item.name}</td>
+                          <td className={`py-3 text-center ${theme.colors.text}`}>{item.qty}</td>
+                          <td className={`py-3 text-right ${theme.colors.text}`}>
+                            {formatCurrency(Number(item.price))}
                           </td>
-                          <td className="min-w-[80px] text-right">
-                            ${Number(item.price).toFixed(2)}
-                          </td>
-                          <td className="min-w-[90px] text-right">
-                            ${Number(item.price * item.qty).toFixed(2)}
+                          <td className={`py-3 text-right font-medium ${theme.colors.text}`}>
+                            {formatCurrency(Number(item.price * item.qty))}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
 
-                  <div className="mt-4 flex flex-col items-end space-y-2">
-                    <div className="flex w-full justify-between border-t border-black/10 pt-2">
-                      <span className="font-bold">Subtotal:</span>
-                      <span>${invoiceInfo.subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex w-full justify-between">
-                      <span className="font-bold">Discount:</span>
-                      <span>${invoiceInfo.discountRate.toFixed(2)}</span>
-                    </div>
-                    <div className="flex w-full justify-between">
-                      <span className="font-bold">Tax:</span>
-                      <span>${invoiceInfo.taxRate.toFixed(2)}</span>
-                    </div>
-                    <div className="flex w-full justify-between border-t border-black/10 py-2">
-                      <span className="font-bold">Total:</span>
-                      <span className="font-bold">
-                        $
-                        {invoiceInfo.total % 1 === 0
-                          ? invoiceInfo.total
-                          : invoiceInfo.total.toFixed(2)}
-                      </span>
-                    </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className={`font-medium ${theme.colors.textSecondary}`}>{translations.subtotal}:</span>
+                    <span className={theme.colors.text}>{formatCurrency(invoiceInfo.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={`font-medium ${theme.colors.textSecondary}`}>{translations.discount}:</span>
+                    <span className={theme.colors.text}>-{formatCurrency(invoiceInfo.discountRate)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={`font-medium ${theme.colors.textSecondary}`}>{translations.tax}:</span>
+                    <span className={theme.colors.text}>+{formatCurrency(invoiceInfo.taxRate)}</span>
+                  </div>
+                  <div className={`flex justify-between border-t ${theme.colors.border} pt-2`}>
+                    <span className={`text-lg font-bold ${theme.colors.text}`}>{translations.total}:</span>
+                    <span className={`text-lg font-bold ${theme.colors.text}`}>
+                      {formatCurrency(invoiceInfo.total)}
+                    </span>
                   </div>
                 </div>
               </div>
-              <div className="mt-4 flex space-x-2 px-4 pb-6">
+
+              {/* Footer Actions */}
+              <div className="flex space-x-3 px-6 pb-6">
                 <button
-                  className="flex w-full items-center justify-center space-x-1 rounded-md border border-blue-500 py-2 text-sm text-blue-500 shadow-sm hover:bg-blue-500 hover:text-white"
+                  className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 border ${theme.colors.border} rounded-lg ${theme.colors.text} hover:${theme.colors.accent} transition-colors`}
                   onClick={SaveAsPDFHandler}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                    />
-                  </svg>
-                  <span>Download</span>
+                  <Download className="h-4 w-4" />
+                  <span>{translations.saveAsPDF}</span>
+                </button>
+                <button
+                  className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 border ${theme.colors.border} rounded-lg ${theme.colors.text} hover:${theme.colors.accent} transition-colors`}
+                  onClick={printHandler}
+                >
+                  <Printer className="h-4 w-4" />
+                  <span>{translations.print}</span>
                 </button>
                 <button
                   onClick={addNextInvoiceHandler}
-                  className="flex w-full items-center justify-center space-x-1 rounded-md bg-blue-500 py-2 text-sm text-white shadow-sm hover:bg-blue-600"
+                  className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 ${theme.colors.primary} ${theme.colors.primaryHover} text-white rounded-lg transition-colors`}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 5l7 7-7 7M5 5l7 7-7 7"
-                    />
-                  </svg>
-                  <span>Next</span>
+                  <Plus className="h-4 w-4" />
+                  <span>{translations.addNextInvoice}</span>
                 </button>
               </div>
             </div>
